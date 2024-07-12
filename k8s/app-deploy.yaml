@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      volumes:
+        - name: dir
+          hostPath:
+            path: /code
+      containers:
+        - name: laravel-demo
+          image: bmarete/laravel-app
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: dir
+              mountPath: /code
+          ports:
+            - containerPort: 9000
+          env:
+            - name: APP_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_KEY
+      initContainers:
+        - name: install
+          image: busybox
+          volumeMounts:
+            - name: dir
+              mountPath: /code
+          command:
+            - cp
+            - "-r"
+            - "/var/www/."
+            - "/code/app"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: laravel-service
+spec:
+  selector:
+    app: webapp
+  ports:
+    - protocol: TCP
+      port: 9000
+      targetPort: 9000
